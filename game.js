@@ -1,24 +1,45 @@
+// File: game.js
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+ctx.imageSmoothingEnabled = false;
 
-ctx.fillStyle = "black";
-ctx.fillRect(0, 0, canvas.width, canvas.height);
+let worldImage = new Image();
+worldImage.src = "world.png";
 
-ctx.fillStyle = "lime";
-ctx.fillRect(72, 72, 16, 16); // pixel player
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
 
-let x = 72, y = 72;
+window.addEventListener("resize", resizeCanvas);
 
-document.addEventListener("keydown", e => {
-  if (e.key === "ArrowLeft") x -= 2;
-  if (e.key === "ArrowRight") x += 2;
-  if (e.key === "ArrowUp") y -= 2;
-  if (e.key === "ArrowDown") y += 2;
+// Start animation loop
+worldImage.onload = () => {
+    resizeCanvas();
+    requestAnimationFrame(loop);
+};
+
+// Click to change image
+canvas.addEventListener("click", () => {
+    // Create a new Image object for the new source
+    const newImage = new Image();
+    if (worldImage.src.includes("world.png")) {
+        newImage.src = "girly.png";
+    } else {
+        newImage.src = "world.png";
+    }
+
+    newImage.onload = () => {
+        worldImage = newImage; // replace the current image
+    };
 });
 
 function loop() {
-  ctx.clearRect(0,0,160,160);
-  ctx.fillRect(x, y, 16, 16);
-  requestAnimationFrame(loop);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw the current image scaled to the canvas
+    ctx.drawImage(worldImage, 0, 0, canvas.width, canvas.height);
+
+    requestAnimationFrame(loop);
 }
-loop();
