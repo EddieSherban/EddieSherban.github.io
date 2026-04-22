@@ -113,6 +113,15 @@ function say(text, frames = 1000) {
   state.dialogueLine = { text, ttl: frames };
 }
 
+function drawText(str) {
+  // Draw text on top
+    ctx.fillStyle = "white";
+    ctx.font = "24px monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(str, 120, 20);
+}
+
 // ── Scene Definition ──────────────────────────────────────────
  
 /**
@@ -165,7 +174,7 @@ let transitioning = false;
 /**
  * Navigate to a scene by key, with an optional fade transition.
  */
-function goTo(sceneKey, fadeDuration = 20) {
+function goTo(sceneKey, fadeDuration = 100) {
   if (transitioning) return;
   if (!scenes[sceneKey]) {
     console.warn(`Scene "${sceneKey}" not found.`);
@@ -209,10 +218,11 @@ function fadeOut(frames, onComplete) {
 }
  
 function fadeIn(frames) {
+  transitioning = false; 
   fadeAlpha = 1;
   fadeDir   = -1;
   fadeSpeed = 1 / frames;
-  fadeCallback = () => { transitioning = false; };
+  //fadeCallback = () => { transitioning = false; };
 }
  
 function updateFade() {
@@ -266,8 +276,15 @@ canvas.addEventListener("mousemove", e => {
 });
  
 canvas.addEventListener("click", () => {
+  console.log("Transitioning: ", transitioning);
   if (transitioning) return;
   const h = mouse.hoveredHotspot;
+  
+  //debugging purposes
+  console.log(`button pressed!
+    mouse.x: ${mouse.x/GAME_W}
+    mouse.y: ${mouse.y/GAME_H}`);
+  
   if (h?.onClick) h.onClick();
 });
  
@@ -411,13 +428,17 @@ function drawInventory() {
  
 // ── Game Loop ─────────────────────────────────────────────────
  
-let DEBUG_HOTSPOTS = false; // set to true to see hotspot outlines
+let DEBUG_HOTSPOTS = true; // set to true to see hotspot outlines
  
 function tick() {
   // Advance dialogue timer
   if (state.dialogueLine) {
     state.dialogueLine.ttl--;
     if (state.dialogueLine.ttl <= 0) state.dialogueLine = null;
+  }
+  state.blinkTimer = (state.blinkTimer ?? 0) + 1;
+  if(state.blinkTimer % 150 === 0) {
+    state.flags.redCircleVisible = !state.flags.redCircleVisible;
   }
   updateFade();
   render();
@@ -456,9 +477,11 @@ defineScenes({
     background: "worldBg",
     sprites: [
       {
-        asset: "binduSprite",
-        x: GAME_W/2-128/2, y: GAME_H/2-128/2, w: 128, h: 128,
-        visible: () => !hasFlag("clickedOnBindu"),
+        asset: "redCircle",
+        x: GAME_W*0.78 - 30/2, y: GAME_H*0.43 - 30/2, w: 30, h: 30,
+        visible: () => 
+          !hasFlag("clickedOnHongKong") &&
+          state.flags.redCircleVisible
       }
     ],
     hotspots: [
@@ -475,17 +498,14 @@ defineScenes({
         }
       },
       {
-        id: "bindu",
-        label: "bindu",
-        x: GAME_W/2-128/2, y: GAME_H/2-128/2, w: 128, h: 128,
-        visible: () => !hasFlag("clickedOnBindu"),
+        id: "hk",
+        label: "Hong Kong",
+        x: GAME_W*0.78 - 30/2, y: GAME_H*0.43 - 30/2, w: 30, h: 30,
+        visible: () => !hasFlag("clickedOnHongKong"),
         onClick: () => {
-          say("Bindu: \"Hiiiii I'm Binduuuuuu. Thanks for clicking on me\"");
-          setFlag("clickedOnBindu");
-          
-          setTimeout(() => {
-            clearFlag("clickedOnBindu");
-          } , 2000);
+          say("red Corcl;e: \"you clicked on the red cirlce!!!! :OOO\"");
+          setFlag("clickedOnHongKong");
+          goTo("hk");
         }
 
       }
@@ -493,21 +513,26 @@ defineScenes({
     onEnter: () => console.log("Entered world view"),
   },
  
-  caveInterior: {
-    background: "caveBg",
+  hk: {
+    background: "hkBg",
     hotspots: [
       {
         id: "exit",
         label: "Exit Cave",
         x: 0, y: 0, w: 100, h: GAME_H,
-        onClick: () => goTo("forest"),
+        onClick: () => {
+          say("we should be going back to world...");
+          clearFlag("clickedOnHongKong");
+          goTo("world");
+        }
       }
     ],
-    onEnter: () => say("The cave echoes with dripping water."),
+    onEnter: () => say("Welcome to Hong Kong!!"),
   }
 });
  
 startGame("world", {
   worldBg:      "assets/images/world.png",
-  binduSprite:  "assets/images/girly.png",
+  redCircle:  "assets/images/red_circle.png",
+  hkBg:       "assets/images/pixel-hongkong.png",
 });
