@@ -310,7 +310,40 @@ function render() {
  
   // Background
   const bg = assets[scene.background];
-  if (bg) ctx.drawImage(bg, 0, 0, GAME_W, GAME_H);
+  if (bg) {
+  const mode = scene.backgroundMode ?? "stretch";
+
+  if (mode === "stretch") {
+    ctx.drawImage(bg, 0, 0, GAME_W, GAME_H);
+
+  } else if (mode === "fit") {
+    // Letterbox/pillarbox — fits whole image, no cropping
+    const scale = Math.min(GAME_W / bg.naturalWidth, GAME_H / bg.naturalHeight);
+    const w = bg.naturalWidth * scale;
+    const h = bg.naturalHeight * scale;
+    const x = (GAME_W - w) / 2;
+    const y = (GAME_H - h) / 2;
+    ctx.fillStyle = "#000"; // letterbox colour
+    ctx.fillRect(0, 0, GAME_W, GAME_H);
+    ctx.drawImage(bg, x, y, w, h);
+
+  } else if (mode === "fill") {
+    // Zoom to fill — crops but no bars
+    const scale = Math.max(GAME_W / bg.naturalWidth, GAME_H / bg.naturalHeight);
+    const w = bg.naturalWidth * scale;
+    const h = bg.naturalHeight * scale;
+    const x = (GAME_W - w) / 2;
+    const y = (GAME_H - h) / 2;
+    ctx.drawImage(bg, x, y, w, h);
+
+  } else if (mode === "scroll-x") {
+    // Tall-and-narrow image — scrolls horizontally based on a state value
+    const scale = GAME_H / bg.naturalHeight; // fit height exactly
+    const w = bg.naturalWidth * scale;
+    const offsetX = (state.scrollX ?? 0); // you control this
+    ctx.drawImage(bg, offsetX, 0, w, GAME_H);
+  }
+}
  
   // Sprites
   for (const sp of scene.sprites ?? []) {
@@ -437,8 +470,9 @@ function tick() {
     if (state.dialogueLine.ttl <= 0) state.dialogueLine = null;
   }
   state.blinkTimer = (state.blinkTimer ?? 0) + 1;
-  if(state.blinkTimer % 150 === 0) {
+  if(state.blinkTimer % 250 === 0) {
     state.flags.redCircleVisible = !state.flags.redCircleVisible;
+    state.flags.arrowVisible = !state.flags.arrowVisible;
   }
   updateFade();
   render();
@@ -460,6 +494,7 @@ async function startGame(firstScene, assetManifest = {}) {
   const scene = scenes[firstScene];
   if (scene?.onEnter) scene.onEnter();
   loadSceneMusic(scene);
+  console.log("GAME_H: ", GAME_H, "GAME_W: ", GAME_W);
   tick();
 }
  
@@ -478,10 +513,17 @@ defineScenes({
     sprites: [
       {
         asset: "redCircle",
-        x: GAME_W*0.78 - 30/2, y: GAME_H*0.43 - 30/2, w: 30, h: 30,
+        x: GAME_W*0.78 - 50/2, y: GAME_H*0.43 - 50/2, w: 50, h: 50,
         visible: () => 
           !hasFlag("clickedOnHongKong") &&
           state.flags.redCircleVisible
+      },
+      {
+        asset: "arrowRight",
+        x: GAME_W*0.77 - 100, y: GAME_H*0.43 - 100/2, w: 100, h: 100,
+        visible: () =>
+          !hasFlag("clickedOnHongKong") &&
+          state.flags.arrowVisible
       }
     ],
     hotspots: [
@@ -518,21 +560,56 @@ defineScenes({
     hotspots: [
       {
         id: "exit",
-        label: "Exit Cave",
+        label: "Back to Hong Kong",
         x: 0, y: 0, w: 100, h: GAME_H,
         onClick: () => {
-          say("we should be going back to world...");
           clearFlag("clickedOnHongKong");
           goTo("world");
+        }
+      },
+      {
+        id: "kennedy",
+        label: "To Kennedy town!!",
+        x: GAME_W-100, y: GAME_H*0.25, w: 100, h: GAME_H*0.5,
+        onClick: () => {
+          goTo("kt");
         }
       }
     ],
     onEnter: () => say("Welcome to Hong Kong!!"),
+  },
+
+  kt: {
+    background: "ktBg",
+    backgroundMode: "fit", // "stretch" | "fit" | "fill" | "scroll-x"
+    hotspots: [
+      {
+        id: "apartment",
+        label: "Rajanala Household!!",
+        x: GAME_H*0.59, y: GAME_W*0.13, w: 100, h: 100,
+        onClick: () => {
+          goTo("apt");
+        }
+      }
+    ]
+  },
+
+  apt: {
+    background: "aptBg",
+    
   }
 });
  
 startGame("world", {
-  worldBg:      "assets/images/world.png",
-  redCircle:  "assets/images/red_circle.png",
+  //Backgrounds
+  worldBg:    "assets/images/world.png",
   hkBg:       "assets/images/pixel-hongkong.png",
+  ktBg:       "assets/images/kennedytown.png",
+  aptBg:       "assets/images/apartment.png",
+  brBg:       "assets/images/bindus-room.jpeg",
+
+
+  //Sprites
+  redCircle:  "assets/images/red_circle.png",
+  arrowRight: "assets/images/arrowright.png"
 });
