@@ -589,6 +589,7 @@ defineScenes({
         x: GAME_H*0.59, y: GAME_W*0.13, w: 100, h: 100,
         onClick: () => {
           goTo("apt");
+          setFlag("inApartment");
         }
       }
     ]
@@ -596,20 +597,66 @@ defineScenes({
 
   apt: {
     background: "aptBg",
-    
+    sprites: [
+      {
+        asset: "arrowRight",
+        x: GAME_W*0.95 - 100/2, y: GAME_H*0.67 - 100/2, w:100, h:100,
+        visible: () => 
+          !hasFlag("bindusRoom") && 
+          state.flags.arrowVisible,
+        onClick: () => {
+          say("Let's see what's in Bindu's room!!");
+        }
+
+      }
+    ],
+    hotspots: [
+      {
+        id: "bindusRoom",
+        label: "Go to room... whose room tho????",
+        x: GAME_W*0.96 - 100/2, y: GAME_H*0.67 - 100/2, w:100, h:100,
+        onClick: () => {
+          clearFlag("inApartment");
+          setFlag("bindusRoom");
+          goTo("bRoom");
+        }
+      }
+    ]
+  },
+
+  bRoom: {
+    background: "brBg",
+    sprites: [
+      {
+        asset: "binduSprite",
+        x: GAME_W*0.33 - 500/2, y: GAME_H*0.78 - 500/2, w: 500, h: 500,
+        visible: () => hasFlag("binduAwoken")
+      }
+    ],
+    hotspots: [
+      {
+        id: "binduWokeUp",
+        label: "WAKE UP BINDU YOU SLEEPYHEAD!!",
+        x: 0, y: 0, w: GAME_W, h: GAME_H,
+        onClick: () => {
+          setFlag("binduAwoken");
+        }
+      }
+    ]
   }
 });
  
 startGame("world", {
   //Backgrounds
-  worldBg:    "assets/images/world.png",
-  hkBg:       "assets/images/pixel-hongkong.png",
-  ktBg:       "assets/images/kennedytown.png",
-  aptBg:       "assets/images/apartment.png",
-  brBg:       "assets/images/bindus-room.jpeg",
+  worldBg:      "assets/images/world.png",
+  hkBg:         "assets/images/pixel-hongkong.png",
+  ktBg:         "assets/images/kennedytown.png",
+  aptBg:        "assets/images/apartment.png",
+  brBg:         "assets/images/bindus-room.jpeg",
 
 
   //Sprites
-  redCircle:  "assets/images/red_circle.png",
-  arrowRight: "assets/images/arrowright.png"
+  redCircle:    "assets/images/red_circle.png",
+  arrowRight:   "assets/images/arrowright.png",
+  binduSprite:  "assets/images/girly.png",
 });
