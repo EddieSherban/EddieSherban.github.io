@@ -352,6 +352,7 @@ function render() {
     if (!img) continue;
     const w = sp.w ?? img.naturalWidth;
     const h = sp.h ?? img.naturalHeight;
+
     ctx.drawImage(img, sp.x, sp.y, w, h);
   }
  
@@ -457,8 +458,40 @@ function drawInventory() {
     ctx.restore();
   });
 }
- 
- 
+// ── Animation ─────────────────────────────────────────────────
+function updateSprites() {
+  const scene = scenes[state.currentScene];
+  if (!scene) return;
+
+  for (const sp of scene.sprites ?? []) {
+    if (sp.visible && !sp.visible()) continue;
+
+    // Simple movement
+    if (sp.vx) sp.x += sp.vx;
+    if (sp.vy) sp.y += sp.vy;
+
+    // Optional: bounce back and forth
+    if (sp.bounceX) {
+      if (sp.x <= sp.minX || sp.x /*+ (sp.w ?? 0)*/ >= sp.maxX) {
+        sp.vx *= -1;
+      }
+    }
+
+    if (sp.bounceY) {
+      if (sp.y <= sp.minY || sp.y + (sp.h ?? 0) >= sp.maxY) {
+        sp.vy *= -1;
+      }
+    }
+
+    // Optional: travel to destination
+    if (sp.travelX) {
+      if (sp.x <= sp.minX || sp.x /*+ (sp.w ?? 0)*/ >= sp.maxX) {
+        sp.vx *= 0;
+      }
+    }
+  }
+} 
+
 // ── Game Loop ─────────────────────────────────────────────────
  
 let DEBUG_HOTSPOTS = true; // set to true to see hotspot outlines
@@ -469,11 +502,15 @@ function tick() {
     state.dialogueLine.ttl--;
     if (state.dialogueLine.ttl <= 0) state.dialogueLine = null;
   }
+  
   state.blinkTimer = (state.blinkTimer ?? 0) + 1;
-  if(state.blinkTimer % 250 === 0) {
+
+  if(state.blinkTimer % 60 === 0) {
     state.flags.redCircleVisible = !state.flags.redCircleVisible;
     state.flags.arrowVisible = !state.flags.arrowVisible;
   }
+
+  updateSprites();
   updateFade();
   render();
   requestAnimationFrame(tick);
@@ -618,18 +655,21 @@ defineScenes({
         onClick: () => {
           clearFlag("inApartment");
           setFlag("bindusRoom");
-          goTo("bRoom");
+          goTo("bRoom1");
         }
       }
     ]
   },
 
-  bRoom: {
+  bRoom1: {
     background: "brBg",
     sprites: [
       {
         asset: "binduSprite",
         x: GAME_W*0.33 - 500/2, y: GAME_H*0.78 - 500/2, w: 500, h: 500,
+        vx: 1,
+        maxX: GAME_W*0.5 - 500/2,
+        travelX: true,
         visible: () => hasFlag("binduAwoken")
       }
     ],
@@ -639,7 +679,8 @@ defineScenes({
         label: "WAKE UP BINDU YOU SLEEPYHEAD!!",
         x: 0, y: 0, w: GAME_W, h: GAME_H,
         onClick: () => {
-          setFlag("binduAwoken");
+          setFlag("binduAwoken"); 
+          say("HEYOO, it's-a meeee, BINDUUUU. Don't wake me up from my sleepy time again or else >:(");
         }
       }
     ]
