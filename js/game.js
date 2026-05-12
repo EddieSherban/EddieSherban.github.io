@@ -259,6 +259,9 @@ function playSfx(src, volume = 1) {
   const sfx = new Audio(src);
   sfx.volume = volume;
   sfx.play().catch(() => {});
+  sfx.play().catch(err => {
+    console.error("Failed to play sound:", src, err);
+  });
 }
  
  
@@ -311,39 +314,39 @@ function render() {
   // Background
   const bg = assets[scene.background];
   if (bg) {
-  const mode = scene.backgroundMode ?? "stretch";
+    const mode = scene.backgroundMode ?? "stretch";
 
-  if (mode === "stretch") {
-    ctx.drawImage(bg, 0, 0, GAME_W, GAME_H);
+    if (mode === "stretch") {
+      ctx.drawImage(bg, 0, 0, GAME_W, GAME_H);
 
-  } else if (mode === "fit") {
-    // Letterbox/pillarbox — fits whole image, no cropping
-    const scale = Math.min(GAME_W / bg.naturalWidth, GAME_H / bg.naturalHeight);
-    const w = bg.naturalWidth * scale;
-    const h = bg.naturalHeight * scale;
-    const x = (GAME_W - w) / 2;
-    const y = (GAME_H - h) / 2;
-    ctx.fillStyle = "#000"; // letterbox colour
-    ctx.fillRect(0, 0, GAME_W, GAME_H);
-    ctx.drawImage(bg, x, y, w, h);
+    } else if (mode === "fit") {
+      // Letterbox/pillarbox — fits whole image, no cropping
+      const scale = Math.min(GAME_W / bg.naturalWidth, GAME_H / bg.naturalHeight);
+      const w = bg.naturalWidth * scale;
+      const h = bg.naturalHeight * scale;
+      const x = (GAME_W - w) / 2;
+      const y = (GAME_H - h) / 2;
+      ctx.fillStyle = "#000"; // letterbox colour
+      ctx.fillRect(0, 0, GAME_W, GAME_H);
+      ctx.drawImage(bg, x, y, w, h);
 
-  } else if (mode === "fill") {
-    // Zoom to fill — crops but no bars
-    const scale = Math.max(GAME_W / bg.naturalWidth, GAME_H / bg.naturalHeight);
-    const w = bg.naturalWidth * scale;
-    const h = bg.naturalHeight * scale;
-    const x = (GAME_W - w) / 2;
-    const y = (GAME_H - h) / 2;
-    ctx.drawImage(bg, x, y, w, h);
+    } else if (mode === "fill") {
+      // Zoom to fill — crops but no bars
+      const scale = Math.max(GAME_W / bg.naturalWidth, GAME_H / bg.naturalHeight);
+      const w = bg.naturalWidth * scale;
+      const h = bg.naturalHeight * scale;
+      const x = (GAME_W - w) / 2;
+      const y = (GAME_H - h) / 2;
+      ctx.drawImage(bg, x, y, w, h);
 
-  } else if (mode === "scroll-x") {
-    // Tall-and-narrow image — scrolls horizontally based on a state value
-    const scale = GAME_H / bg.naturalHeight; // fit height exactly
-    const w = bg.naturalWidth * scale;
-    const offsetX = (state.scrollX ?? 0); // you control this
-    ctx.drawImage(bg, offsetX, 0, w, GAME_H);
+    } else if (mode === "scroll-x") {
+      // Tall-and-narrow image — scrolls horizontally based on a state value
+      const scale = GAME_H / bg.naturalHeight; // fit height exactly
+      const w = bg.naturalWidth * scale;
+      const offsetX = (state.scrollX ?? 0); // you control this
+      ctx.drawImage(bg, offsetX, 0, w, GAME_H);
+    }
   }
-}
  
   // Sprites
   for (const sp of scene.sprites ?? []) {
@@ -483,10 +486,20 @@ function updateSprites() {
       }
     }
 
-    // Optional: travel to destination
+    // Optional: travel to destination. ONLY TRAVEL X THEN Y DIRECTION FOR NOW
     if (sp.travelX) {
       if (sp.x <= sp.minX || sp.x /*+ (sp.w ?? 0)*/ >= sp.maxX) {
         sp.vx *= 0;
+        if(sp.minY > 0) sp.vy = -5;
+        if(sp.maxY > 0) sp.vy = 5;
+      }
+    }
+
+    // sp.vy happens when reached destination
+    if (sp.travelY) {
+      if (sp.y <= sp.minY || sp.y /*+ (sp.w ?? 0)*/ >= sp.maxY) {
+        sp.vy *= 0;
+        setFlag("spriteArrived");
       }
     }
   }
@@ -504,7 +517,12 @@ function tick() {
   }
   
   state.blinkTimer = (state.blinkTimer ?? 0) + 1;
+  state.gameTimer = (state.gameTimer ?? 0) + 1;
+  if(state.gameTimer % 120 === 0) {
+    //do something every 120 ticks
+  }
 
+  //controls blinking for circle/arrow icons
   if(state.blinkTimer % 60 === 0) {
     state.flags.redCircleVisible = !state.flags.redCircleVisible;
     state.flags.arrowVisible = !state.flags.arrowVisible;
@@ -583,6 +601,7 @@ defineScenes({
         visible: () => !hasFlag("clickedOnHongKong"),
         onClick: () => {
           say("red Corcl;e: \"you clicked on the red cirlce!!!! :OOO\"");
+          clearFlag("redCircleVisible");
           setFlag("clickedOnHongKong");
           goTo("hk");
         }
@@ -594,6 +613,7 @@ defineScenes({
  
   hk: {
     background: "hkBg",
+    //music: "assets/soundtrack/sk-beautifulgirls.mp3",
     hotspots: [
       {
         id: "exit",
@@ -613,7 +633,10 @@ defineScenes({
         }
       }
     ],
-    onEnter: () => say("Welcome to Hong Kong!!"),
+    onEnter: () => {
+      say("Welcome to Hong Kong!!");
+      //playSfx("assets/soundtrack/sk-beautifulgirls.mp3", 0.5);
+      }
   },
 
   kt: {
@@ -626,7 +649,6 @@ defineScenes({
         x: GAME_H*0.59, y: GAME_W*0.13, w: 100, h: 100,
         onClick: () => {
           goTo("apt");
-          setFlag("inApartment");
         }
       }
     ]
@@ -653,51 +675,148 @@ defineScenes({
         label: "Go to room... whose room tho????",
         x: GAME_W*0.96 - 100/2, y: GAME_H*0.67 - 100/2, w:100, h:100,
         onClick: () => {
-          clearFlag("inApartment");
           setFlag("bindusRoom");
-          goTo("bRoom1");
+          goTo("bRoomNoSprite");
         }
       }
     ]
   },
 
-  bRoom1: {
+  bRoomNoSprite: {
     background: "brBg",
-    sprites: [
-      {
-        asset: "binduSprite",
-        x: GAME_W*0.33 - 500/2, y: GAME_H*0.78 - 500/2, w: 500, h: 500,
-        vx: 1,
-        maxX: GAME_W*0.5 - 500/2,
-        travelX: true,
-        visible: () => hasFlag("binduAwoken")
-      }
-    ],
     hotspots: [
       {
         id: "binduWokeUp",
         label: "WAKE UP BINDU YOU SLEEPYHEAD!!",
         x: 0, y: 0, w: GAME_W, h: GAME_H,
         onClick: () => {
-          setFlag("binduAwoken"); 
-          say("HEYOO, it's-a meeee, BINDUUUU. Don't wake me up from my sleepy time again or else >:(");
+          setFlag("binduAwoken");
+          goTo("bRoomStationaryScene", 0);
         }
       }
     ]
+  },
+
+  bRoomStationaryScene: {
+    background: "brBg",
+    sprites: [
+      {
+        asset: "binduSprite",
+        x: GAME_W*0.33 - 500/2, y: GAME_H*0.78 - 500/2, w: 500, h: 500,
+        visible: () => hasFlag("binduAwoken")
+      }
+    ],
+    hotspots: [
+      {
+        id: "computer",
+        label: "Check what's on the computer!!",
+        x: GAME_W*0.78 - 120/2, y: GAME_H*0.55 - 100/2, w: 120, h: 100,
+        onClick: () => {
+          goTo("bRoomMoveToComputerScene", 0);
+        }
+      },
+      {
+        id: "window",
+        label: "Check what's at the window!!",
+        x: GAME_W*0.43 - 500/2, y: GAME_H*0.45 - 300/2, w: 500, h: 300,
+      }
+    ],
+    onEnter: () => say("HEYYYYYY, it's-a meeee, BINDUUUU. Don't wake me up from my sleepy time again or else >:("),
+  },
+
+  bRoomMoveToComputerScene: {
+    background: "brBg",
+    sprites: [
+      {
+        asset: "binduSprite",
+        x: GAME_W*0.33 - 500/2, y: GAME_H*0.78 - 500/2, w: 500, h: 500,
+        vx:5,
+        maxX: GAME_W*0.69 - 500/2,
+        minY: GAME_H*0.6 - 500/2,
+        travelX: true,
+        travelY: true,
+      }
+    ],
+    onEnter: () => {
+      say("Let's see what's on the computer!!");
+      goTo("yt", 400);
+    }
+  },
+
+  yt: {
+    background: "ytBg",
+    sprites: [
+      {
+        asset: "profilePic",
+        x: GAME_W*0.84 - 125/2, y: GAME_H*0.31 - 125/2, w: 125, h: 125,
+      },
+      {
+        asset: "nameText",
+        x: GAME_W*0.92 - 200/2, y: GAME_H*0.28 - 25/2, w: 200, h: 35,
+      },
+      {
+        asset: "odThumbnail",
+        x: GAME_W*0.45 - 1000/2, y: GAME_H*0.39 - 200/2, w: 1000, h: 200,
+      },
+      {
+        asset: "jbThumbnail",
+        x: GAME_W*0.45 - 1000/2, y: GAME_H*0.62 - 200/2, w: 1000, h: 200,
+      },
+      {
+        asset: "bgThumbnail",
+        x: GAME_W*0.81 - 1000/2, y: GAME_H*0.62 - 200/2, w: 1000, h: 200,
+      }
+    ],
+
+    hotspots: [
+      {
+        id: "oneDirection",
+        label: "Play One Direction",
+        x: GAME_W*0.45 - 1000/2, y: GAME_H*0.39 - 200/2, w: 1000, h: 200,
+        onClick: () => {
+          playSfx("assets/soundtrack/od-whatmakesyoubeautiful.mp3", 0.5);
+        }
+      },
+      {
+        id: "oneJBeebs",
+        label: "Play Some JAY BEEBS",
+        x: GAME_W*0.45 - 1000/2, y: GAME_H*0.62 - 200/2, w: 700, h: 200,
+        onClick: () => {
+          playSfx("assets/soundtrack/jb-baby.mp3", 0.5);
+        }        
+      },
+      {
+        id: "seanKINGSTON",
+        label: "Play Some Beauitful girls!!!! :OO",
+        x: GAME_W*0.81 - 1000/2, y: GAME_H*0.62 - 200/2, w: 1000, h: 200,
+        onClick: () => {
+          playSfx("assets/soundtrack/sk-beautifulgirls.mp3", 0.5);
+        }        
+      },
+    ]
+
   }
 });
  
-startGame("world", {
+startGame("yt", {
   //Backgrounds
   worldBg:      "assets/images/world.png",
   hkBg:         "assets/images/pixel-hongkong.png",
   ktBg:         "assets/images/kennedytown.png",
   aptBg:        "assets/images/apartment.png",
   brBg:         "assets/images/bindus-room.jpeg",
+  ytBg:         "assets/images/youtube.png",
 
 
   //Sprites
   redCircle:    "assets/images/red_circle.png",
   arrowRight:   "assets/images/arrowright.png",
   binduSprite:  "assets/images/girly.png",
+
+  //Misc images
+  profilePic:   "assets/images/hottie.png",
+  nameText:     "assets/images/bindutext.png",
+  odThumbnail:  "assets/images/ydkyb-thumbnail.png",
+  jbThumbnail:  "assets/images/jb-thumbnail.png",
+  bgThumbnail:  "assets/images/bg-thumbnail.png",
 });
