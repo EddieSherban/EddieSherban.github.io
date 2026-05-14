@@ -255,13 +255,29 @@ function loadSceneMusic(scene) {
 /**
  * Play a one-shot sound effect.
  */
+let currentSfx = null;
+
 function playSfx(src, volume = 1) {
-  const sfx = new Audio(src);
-  sfx.volume = volume;
-  sfx.play().catch(() => {});
-  sfx.play().catch(err => {
+  // Stop any currently playing SFX first
+  if (currentSfx) {
+    currentSfx.pause();
+    currentSfx.currentTime = 0;
+  }
+
+  currentSfx = new Audio(src);
+  currentSfx.volume = volume;
+
+  currentSfx.play().catch(err => {
     console.error("Failed to play sound:", src, err);
   });
+}
+
+function stopSfx() {
+  if (currentSfx) {
+    currentSfx.pause();
+    currentSfx.currentTime = 0;
+    currentSfx = null;
+  }
 }
  
  
@@ -563,6 +579,13 @@ async function startGame(firstScene, assetManifest = {}) {
 // 2. Define your scenes and start:
  
 defineScenes({
+
+  /***********************************************
+   * 
+   * World map (beginning)
+   * 
+   ***********************************************/
+
   world: {
     background: "worldBg",
     sprites: [
@@ -611,6 +634,12 @@ defineScenes({
     onEnter: () => console.log("Entered world view"),
   },
  
+  /***********************************************
+   * 
+   * Hong kong, facing the sea and the notable buildings
+   * 
+   ***********************************************/
+
   hk: {
     background: "hkBg",
     //music: "assets/soundtrack/sk-beautifulgirls.mp3",
@@ -635,9 +664,14 @@ defineScenes({
     ],
     onEnter: () => {
       say("Welcome to Hong Kong!!");
-      //playSfx("assets/soundtrack/sk-beautifulgirls.mp3", 0.5);
       }
   },
+
+  /***********************************************
+   * 
+   * Kennedy town
+   * 
+   ***********************************************/
 
   kt: {
     background: "ktBg",
@@ -653,6 +687,12 @@ defineScenes({
       }
     ]
   },
+
+  /***********************************************
+   * 
+   * In the empty apartment
+   * 
+   ***********************************************/
 
   apt: {
     background: "aptBg",
@@ -682,6 +722,12 @@ defineScenes({
     ]
   },
 
+  /***********************************************
+   * 
+   * Bindu's room, no sprite
+   * 
+   ***********************************************/
+
   bRoomNoSprite: {
     background: "brBg",
     hotspots: [
@@ -696,6 +742,12 @@ defineScenes({
       }
     ]
   },
+
+  /***********************************************
+   * 
+   * Stationary Bindu sprite in room
+   * 
+   ***********************************************/
 
   bRoomStationaryScene: {
     background: "brBg",
@@ -719,11 +771,19 @@ defineScenes({
         id: "window",
         label: "Check what's at the window!!",
         x: GAME_W*0.43 - 500/2, y: GAME_H*0.45 - 300/2, w: 500, h: 300,
+        onClick: () => {
+          goTo("bRoomMoveToWindowScene", 0);
+        }
       }
     ],
     onEnter: () => say("HEYYYYYY, it's-a meeee, BINDUUUU. Don't wake me up from my sleepy time again or else >:("),
   },
-
+  
+  /**********************************************
+   * 
+   * Bindu moving to the computer
+   * 
+   **********************************************/
   bRoomMoveToComputerScene: {
     background: "brBg",
     sprites: [
@@ -743,6 +803,35 @@ defineScenes({
     }
   },
 
+  /**********************************************
+   * 
+   * Bindu moving to the window
+   * 
+   **********************************************/
+  bRoomMoveToWindowScene: {
+    background: "brBg",
+    sprites: [
+      {
+        asset: "binduSprite",
+        x: GAME_W*0.33 - 500/2, y: GAME_H*0.78 - 500/2, w: 500, h: 500,
+        vx:5,
+        maxX: GAME_W*0.49 - 500/2,
+        minY: GAME_H*0.59 - 500/2,
+        travelX: true,
+        travelY: true,
+      }
+    ],
+    onEnter: () => {
+      say("Let's see what's at the window!!");
+      goTo("brWindow", 400);
+    }
+  },
+
+  /**********************************************
+   * 
+   * Bindu on Youtube
+   * 
+   **********************************************/
   yt: {
     background: "ytBg",
     sprites: [
@@ -765,6 +854,12 @@ defineScenes({
       {
         asset: "bgThumbnail",
         x: GAME_W*0.81 - 1000/2, y: GAME_H*0.62 - 200/2, w: 1000, h: 200,
+      },
+      {
+        asset: "arrowLeft",
+        x: GAME_W*0.1 - 100/2, y: GAME_H*0.9 - 100/2, w: 100, h: 100,
+        visible: () =>   state.flags.arrowVisible
+
       }
     ],
 
@@ -776,6 +871,11 @@ defineScenes({
         onClick: () => {
           playSfx("assets/soundtrack/od-whatmakesyoubeautiful.mp3", 0.5);
         }
+      },
+      {
+        id: "profilePic",
+        label: "Just the cutest girl on the planet ;)",
+        x: GAME_W*0.84 - 125/2, y: GAME_H*0.31 - 125/2, w: 125, h: 125,
       },
       {
         id: "oneJBeebs",
@@ -793,9 +893,33 @@ defineScenes({
           playSfx("assets/soundtrack/sk-beautifulgirls.mp3", 0.5);
         }        
       },
-    ]
+      {
+        id: "exit",
+        label: "Go back to room",
+        x: GAME_W*0.1 - 100/2, y: GAME_H*0.9 - 100/2, w: 100, h: 100,
+        onClick: () => {
+          goTo("bRoomStationaryScene");
+        }
+      }
+    ],
 
-  }
+    onExit: () => {
+      stopSfx();
+    }
+
+  },
+  /**********************************************
+   * 
+   * Bindu at the window
+   * 
+   **********************************************/
+  brWindow: {
+    background: "buildingsBg",
+    sprites: [
+      asset: ""
+    ]
+  },
+
 });
  
 startGame("yt", {
@@ -806,12 +930,23 @@ startGame("yt", {
   aptBg:        "assets/images/apartment.png",
   brBg:         "assets/images/bindus-room.jpeg",
   ytBg:         "assets/images/youtube.png",
+  buildingsBg:  "assets/images/buildings-hk.png",
 
 
-  //Sprites
-  redCircle:    "assets/images/red_circle.png",
-  arrowRight:   "assets/images/arrowright.png",
-  binduSprite:  "assets/images/girly.png",
+  //Indicators
+  redCircle:    "assets/images/indicators/red_circle.png",
+  arrowRight:   "assets/images/indicators/arrowright.png",
+  arrowLeft:    "assets/images/indicators/arrowleft.png",
+
+
+  //People sprites
+  binduSprite:  "assets/images/sprites/girly.png",
+  marthaSprite: "assets/images/sprites/martha.png",
+  hoshaSprite:  "assets/images/sprites/hosha.png",
+  rahulSprite:  "assets/images/sprites/rahul.png",
+  meenaSprite:  "assets/images/sprites/meena.png",
+  momSprite:    "assets/images/sprites/mom.png",
+  dadSprite:    "assets/images/sprites/dad.png",
 
   //Misc images
   profilePic:   "assets/images/hottie.png",

@@ -1,0 +1,9 @@
+pixel art will just need the PNGs
+
+sprite:
+https://www.piskelapp.com/
+-skin shade: #3d2814
+
+world map:
+https://www.pixilart.com/draw/the-world-map-with-flags-sr24836568e6eaws3
+
