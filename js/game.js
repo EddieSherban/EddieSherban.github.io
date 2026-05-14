@@ -916,7 +916,7 @@ defineScenes({
   brWindow: {
     background: "buildingsBg",
     sprites: [
-      asset: ""
+
     ]
   },
 
